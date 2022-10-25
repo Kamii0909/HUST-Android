@@ -1,16 +1,17 @@
 package edu.hust.kien;
 
 import android.os.Bundle;
-import android.text.SpannableString;
-import android.text.Spanned;
-import android.text.SpannedString;
-import android.text.TextUtils;
+import android.view.View;
 import android.view.View.OnClickListener;
 import android.widget.Button;
-import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.databinding.DataBindingUtil;
+
+import java.text.NumberFormat;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 import edu.hust.kien.databinding.ActivityMainBinding;
 
@@ -18,9 +19,10 @@ public class MainActivity extends AppCompatActivity {
 
     ActivityMainBinding binding;
 
-    TextView resultView;
-
-    OnClickListener numberButtonListener;
+    private List<Button> numberButtons;
+    private List<Button> operationButtons;
+    private double lastNum, currNum;
+    private View clickedButton;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -28,77 +30,97 @@ public class MainActivity extends AppCompatActivity {
         binding = DataBindingUtil
                 .setContentView(this, R.layout.activity_main);
 
-        resultView = binding.resultView;
+        addButtonsToList();
+        addListenerForNumberButtons(getNumberButtonListener());
+        addListenerForOperationButtons(getOperationButtonListener());
+    }
 
-        numberButtonListener = view -> {
-            String s = resultView.getText().toString();
-            if(s.equals("0")){
-                s = ((Button) view).getText().toString();
-            }
-            else s = resultView.getText().toString()
-                    + ((Button) view).getText().toString();
-            resultView.setText(s);
+    private OnClickListener getNumberButtonListener() {
+        return view -> {
+            String s = getResultViewText().equals("0")
+                    && view.getId() != R.id.buttonDot
+                    ? "": getResultViewText();
+            setResultViewText(s + getButtonText(view));
         };
-        initNumberButtonListener();
     }
 
-    private void initNumberButtonListener() {
-        binding.button0.setOnClickListener(numberButtonListener);
-        binding.button1.setOnClickListener(numberButtonListener);
-        binding.button2.setOnClickListener(numberButtonListener);
-        binding.button3.setOnClickListener(numberButtonListener);
-        binding.button4.setOnClickListener(numberButtonListener);
-        binding.button5.setOnClickListener(numberButtonListener);
-        binding.button6.setOnClickListener(numberButtonListener);
-        binding.button7.setOnClickListener(numberButtonListener);
-        binding.button8.setOnClickListener(numberButtonListener);
-        binding.button9.setOnClickListener(numberButtonListener);
+    private OnClickListener getOperationButtonListener() {
+        return view -> {
+            if(clickedButton != null){
+                currNum = Double.parseDouble(getResultViewText().substring(1));
+                switch (getButtonText(clickedButton)) {
+                    case "+": lastNum += currNum; break;
+                    case "-": lastNum -= currNum; break;
+                    case "*": lastNum *= currNum; break;
+                    case "/": lastNum /= currNum; break;
+                    case "=": clickedButton = null;
+                    default:
+                        throw new IllegalStateException(
+                                "Undefined switch value: "
+                                + getButtonText(clickedButton)
+                        );
+                }
+                clickedButton = view;
+                setResultViewText(String.valueOf(lastNum));
+
+            }
+            else {
+                clickedButton = view;
+                lastNum = Double.parseDouble(getResultViewText());
+                binding.resultView.setText(getButtonText(view));
+            }
+        };
     }
 
-    private static CharSequence joinSpannables(String delimiter,
-                                              CharSequence... text) {
-        if (text.length == 0) {
-            return "";
+    private void addListenerForNumberButtons(OnClickListener listener) {
+        for(Button button: numberButtons){
+            button.setOnClickListener(listener);
         }
-
-        if (text.length == 1) {
-            return text[0];
+    }
+    private void addListenerForOperationButtons(OnClickListener listener) {
+        for(Button button: operationButtons){
+            button.setOnClickListener(listener);
         }
-
-        boolean spanned = false;
-        for (CharSequence sequence : text) {
-            if (sequence instanceof Spanned) {
-                spanned = true;
-                break;
-            }
-        }
-
-        StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < text.length; i++) {
-            if (i > 0) {
-                sb.append(delimiter);
-            }
-            sb.append(text[i]);
-        }
-
-        if (!spanned) {
-            return sb.toString();
-        }
-
-        SpannableString ss = new SpannableString(sb);
-        int off = 0;
-        for (CharSequence charSequence : text) {
-            int len = charSequence.length();
-
-            if (charSequence instanceof Spanned) {
-                TextUtils.copySpansFrom((Spanned) charSequence, 0, len,
-                        Object.class, ss, off);
-            }
-
-            off += len + delimiter.length();
-        }
-
-        return new SpannedString(ss);
     }
 
+    private void addButtonsToList() {
+        numberButtons = new ArrayList<>();
+        numberButtons.addAll(
+                Arrays.asList(
+                        binding.button0,
+                        binding.button1,
+                        binding.button2,
+                        binding.button3,
+                        binding.button4,
+                        binding.button5,
+                        binding.button6,
+                        binding.button7,
+                        binding.button8,
+                        binding.button9,
+                        binding.buttonDot
+                ));
+
+        operationButtons = new ArrayList<>();
+        operationButtons.addAll(
+                Arrays.asList(
+                        binding.buttonPlus,
+                        binding.buttonMinus,
+                        binding.buttonMultiply,
+                        binding.buttonDivide,
+                        binding.buttonEqual
+                ));
+    }
+
+    private String getResultViewText() {
+        return binding.resultView.getText().toString();
+    }
+    private void setResultViewText(String string) {
+        binding.resultView.setText(string);
+    }
+
+    private String getButtonText(View view) {
+        if(view instanceof Button)
+            return ((Button) view).getText().toString();
+        else throw new UnsupportedOperationException("Given view is not a button");
+    }
 }
