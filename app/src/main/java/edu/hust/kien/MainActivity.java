@@ -8,6 +8,9 @@ import android.widget.Button;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.databinding.DataBindingUtil;
 
+import com.google.android.material.snackbar.Snackbar;
+
+import java.text.DecimalFormat;
 import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -21,8 +24,11 @@ public class MainActivity extends AppCompatActivity {
 
     private List<Button> numberButtons;
     private List<Button> operationButtons;
+
+    private boolean hasDot = false;
     private double lastNum, currNum;
-    private View clickedButton;
+    private View lastClickedButton;
+    private final NumberFormat formatter = new DecimalFormat("#.########");
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -37,48 +43,82 @@ public class MainActivity extends AppCompatActivity {
 
     private OnClickListener getNumberButtonListener() {
         return view -> {
-            String s = getResultViewText().equals("0")
-                    && view.getId() != R.id.buttonDot
-                    ? "": getResultViewText();
-            setResultViewText(s + getButtonText(view));
+            if (isButtonDot(view)) {
+                if (!hasDot) {
+                    setQueryViewText(getQueryViewText() + ".");
+                    hasDot = true;
+                } else {
+                    Snackbar.make(
+                            binding.resultView,
+                            "Cannot have 2 dots in a number",
+                            500).show();
+                }
+            } else {
+                String prepend =
+                        getQueryViewText().equals("0")
+                                ? "" : getQueryViewText();
+                setQueryViewText(prepend + getButtonText(view));
+            }
         };
     }
 
+
     private OnClickListener getOperationButtonListener() {
         return view -> {
-            if(clickedButton != null){
-                currNum = Double.parseDouble(getResultViewText().substring(1));
-                switch (getButtonText(clickedButton)) {
-                    case "+": lastNum += currNum; break;
-                    case "-": lastNum -= currNum; break;
-                    case "*": lastNum *= currNum; break;
-                    case "/": lastNum /= currNum; break;
-                    case "=": clickedButton = null;
+
+
+            if(lastClickedButton != null){
+                currNum = Double.parseDouble(getQueryViewText().substring(1));
+                switch (getButtonText(lastClickedButton)) {
+                    case "+":
+                        lastNum += currNum;
+                        break;
+                    case "-":
+                        lastNum -= currNum;
+                        break;
+                    case "*":
+                        lastNum *= currNum;
+                        break;
+                    case "/":
+                        lastNum /= currNum;
+                        break;
+                    case "=":
+                        break;
                     default:
                         throw new IllegalStateException(
                                 "Undefined switch value: "
-                                + getButtonText(clickedButton)
+                                        + getButtonText(lastClickedButton)
                         );
                 }
-                clickedButton = view;
-                setResultViewText(String.valueOf(lastNum));
+                setResultViewText(formatter.format(lastNum));
+            }
+            else{
+                lastNum = Double.parseDouble(getQueryViewText());
+            }
 
+
+
+            if(!isButtonEqual(view)){
+                setQueryViewText(getButtonText(view));
+                lastClickedButton = view;
+                hasDot = false;
             }
             else {
-                clickedButton = view;
-                lastNum = Double.parseDouble(getResultViewText());
-                binding.resultView.setText(getButtonText(view));
+                lastClickedButton = null;
+                setQueryViewText(formatter.format(lastNum));
+                hasDot = getQueryViewText().contains(".");
             }
         };
     }
 
     private void addListenerForNumberButtons(OnClickListener listener) {
-        for(Button button: numberButtons){
+        for (Button button : numberButtons) {
             button.setOnClickListener(listener);
         }
     }
+
     private void addListenerForOperationButtons(OnClickListener listener) {
-        for(Button button: operationButtons){
+        for (Button button : operationButtons) {
             button.setOnClickListener(listener);
         }
     }
@@ -111,16 +151,29 @@ public class MainActivity extends AppCompatActivity {
                 ));
     }
 
-    private String getResultViewText() {
-        return binding.resultView.getText().toString();
+    private String getQueryViewText() {
+        return binding.queryView.getText().toString();
     }
+
+    private void setQueryViewText(String string) {
+        binding.queryView.setText(string);
+    }
+
     private void setResultViewText(String string) {
         binding.resultView.setText(string);
     }
 
     private String getButtonText(View view) {
-        if(view instanceof Button)
+        if (view instanceof Button)
             return ((Button) view).getText().toString();
         else throw new UnsupportedOperationException("Given view is not a button");
+    }
+
+    private boolean isButtonDot(View view) {
+        return binding.buttonDot.equals(view);
+    }
+
+    private boolean isButtonEqual(View view) {
+        return binding.buttonEqual.equals(view);
     }
 }
